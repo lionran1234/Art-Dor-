@@ -1,0 +1,243 @@
+// ===============================
+// Product Data
+// ===============================
+const products = [
+    {
+        id: 1,
+        name: "Handwoven Wall Tapestry",
+        price: 89.99,
+        category: "wall-art",
+        description: "Beautiful handwoven wall tapestry made with natural fibers and earthy tones.",
+        size: "24x36 inches",
+        materials: "Cotton, wool, natural dyes",
+        image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI1MCI+PC9zdmc+"
+    },
+    {
+        id: 2,
+        name: "Ceramic Handmade Vase",
+        price: 65.0,
+        category: "handmade-crafts",
+        description: "Artisan ceramic vase with unique glaze patterns.",
+        size: "12x8 inches",
+        materials: "Ceramic, natural glaze",
+        image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI1MCI+PC9zdmc+"
+    },
+    {
+        id: 3,
+        name: "Abstract Canvas Painting",
+        price: 145.0,
+        category: "paintings",
+        description: "Original abstract painting with warm earth tones.",
+        size: "30x40 inches",
+        materials: "Acrylic on canvas",
+        image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjI1MCI+PC9zdmc+"
+    }
+];
+
+// ===============================
+// State
+// ===============================
+let cart = [];
+let wishlist = [];
+let currentProduct = null;
+
+// ===============================
+// DOM Elements
+// ===============================
+const productsGrid = document.getElementById("products-grid");
+const cartItems = document.getElementById("cart-items");
+const cartTotal = document.getElementById("cart-total");
+const cartCount = document.querySelector(".cart-count");
+const wishlistCount = document.querySelector(".wishlist-count");
+const modal = document.getElementById("product-modal");
+
+// ===============================
+// Init
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+    loadProducts();
+    updateCartUI();
+    setupUI();
+});
+
+// ===============================
+// Load Products
+// ===============================
+function loadProducts(filter = "all") {
+    const list =
+        filter === "all"
+            ? products
+            : products.filter(p => p.category === filter);
+
+    productsGrid.innerHTML = list.map(p => `
+        <div class="product-card">
+            <div class="product-image" onclick="openProductModal(${p.id})">
+                <img src="${p.image}" alt="${p.name}">
+                <button class="wishlist-btn" onclick="toggleWishlist(event, ${p.id})">
+                    <i class="${wishlist.includes(p.id) ? "fas" : "far"} fa-heart"></i>
+                </button>
+            </div>
+            <div class="product-info">
+                <h3>${p.name}</h3>
+                <div class="product-price">$${p.price.toFixed(2)}</div>
+                <button class="btn btn-primary" onclick="addToCart(${p.id})">
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+    `).join("");
+}
+
+// ===============================
+// UI Setup
+// ===============================
+function setupUI() {
+    document.querySelectorAll(".filter-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            loadProducts(btn.dataset.filter);
+        });
+    });
+
+    document.querySelector(".close").onclick = () => modal.style.display = "none";
+    window.onclick = e => { if (e.target === modal) modal.style.display = "none"; };
+}
+
+// ===============================
+// Cart Functions
+// ===============================
+function addToCart(id) {
+    const product = products.find(p => p.id === id);
+    const existing = cart.find(i => i.id === id);
+
+    if (existing) {
+        existing.quantity++;
+    } else {
+        cart.push({ ...product, quantity: 1 });
+    }
+
+    updateCartUI();
+}
+
+function removeFromCart(id) {
+    cart = cart.filter(i => i.id !== id);
+    updateCartUI();
+}
+
+function updateCartUI() {
+    const totalQty = cart.reduce((s, i) => s + i.quantity, 0);
+    cartCount.textContent = totalQty;
+
+    if (!cart.length) {
+        cartItems.innerHTML = "<p>Your cart is empty</p>";
+        cartTotal.textContent = "0.00";
+        return;
+    }
+
+    cartItems.innerHTML = cart.map(i => `
+        <div class="cart-item">
+            <strong>${i.name}</strong>
+            <div>Qty: ${i.quantity}</div>
+            <div>$${(i.price * i.quantity).toFixed(2)}</div>
+            <button onclick="removeFromCart(${i.id})">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `).join("");
+
+    const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
+    cartTotal.textContent = total.toFixed(2);
+
+    wishlistCount.textContent = wishlist.length;
+}
+
+// ===============================
+// Wishlist
+// ===============================
+function toggleWishlist(event, id) {
+    event.stopPropagation();
+
+    if (wishlist.includes(id)) {
+        wishlist = wishlist.filter(x => x !== id);
+    } else {
+        wishlist.push(id);
+    }
+
+    updateCartUI();
+    loadProducts(document.querySelector(".filter-btn.active")?.dataset.filter || "all");
+}
+
+function toggleWishlistFromModal() {
+    if (!currentProduct) return;
+
+    if (wishlist.includes(currentProduct.id)) {
+        wishlist = wishlist.filter(i => i !== currentProduct.id);
+    } else {
+        wishlist.push(currentProduct.id);
+    }
+
+    updateCartUI();
+    updateModalWishlistButton();
+}
+
+// ===============================
+// Modal
+// ===============================
+function openProductModal(id) {
+    currentProduct = products.find(p => p.id === id);
+
+    document.getElementById("modal-product-image").src = currentProduct.image;
+    document.getElementById("modal-product-name").textContent = currentProduct.name;
+    document.getElementById("modal-product-price").textContent = currentProduct.price.toFixed(2);
+    document.getElementById("modal-product-description").textContent = currentProduct.description;
+    document.getElementById("modal-product-size").textContent = currentProduct.size;
+    document.getElementById("modal-product-materials").textContent = currentProduct.materials;
+    document.getElementById("modal-product-category").textContent = currentProduct.category;
+
+    document.getElementById("modal-quantity").value = 1;
+    updateModalWishlistButton();
+
+    modal.style.display = "block";
+}
+
+function updateModalWishlistButton() {
+    const btn = document.querySelector(".modal .wishlist-btn i");
+    btn.className = wishlist.includes(currentProduct.id) ? "fas fa-heart" : "far fa-heart";
+}
+
+function updateModalQuantity(change) {
+    const input = document.getElementById("modal-quantity");
+    let val = parseInt(input.value) + change;
+    if (val < 1) val = 1;
+    if (val > 10) val = 10;
+    input.value = val;
+}
+
+function addToCartFromModal() {
+    const qty = parseInt(document.getElementById("modal-quantity").value);
+    const existing = cart.find(i => i.id === currentProduct.id);
+
+    if (existing) {
+        existing.quantity += qty;
+    } else {
+        cart.push({ ...currentProduct, quantity: qty });
+    }
+
+    modal.style.display = "none";
+    updateCartUI();
+}
+
+// ===============================
+// Checkout
+// ===============================
+function checkout() {
+    if (!cart.length) {
+        alert("Your cart is empty!");
+        return;
+    }
+
+    alert("Demo checkout complete!");
+    cart = [];
+    updateCartUI();
+}
